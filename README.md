@@ -6,7 +6,7 @@ getting information on how to create a keylogger is not easy.
 
 Features of the little project:
 - A file that contains all the info from keys pressed
-- Said file remains modifiable even after the computer is shutdown (the "special" feature needs to be activated nonetheless)
+- Said file remains modifiable even after the computer is shutdown (the "special" feature needs to be activated again nonetheless)
 - lightweight on the system
 
 If my work has been of any value to you, I would be grateful if you credited me in your project!
